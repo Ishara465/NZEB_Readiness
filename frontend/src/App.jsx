@@ -1,6 +1,76 @@
 import { useState, useEffect, useRef } from "react";
 import Papa from "papaparse";
 
+// --- PREDEFINED SCORING MATRIX ---
+// Matches the updated weights and levels for all 58 questions sequentially.
+const SCORING_MATRIX = [
+  // TECHNICAL READINESS (Q1 - Q16)
+  [0.41, 0.82, 1.23, 1.64, 2.05], // Q1
+  [0.37, 0.75, 1.12, 1.5, 1.87], // Q2
+  [0.43, 0.86, 1.28, 1.71, 2.14], // Q3
+  [0.41, 0.82, 1.23, 1.64, 2.05], // Q4
+  [0.43, 0.86, 1.28, 1.71, 2.14], // Q5
+  [0.37, 0.75, 1.12, 1.5, 1.87], // Q6
+  [0.43, 0.86, 1.28, 1.71, 2.14], // Q7
+  [0.41, 0.82, 1.23, 1.64, 2.05], // Q8
+  [0.43, 0.86, 1.28, 1.71, 2.14], // Q9
+  [0.41, 0.82, 1.23, 1.64, 2.05], // Q10
+  [0.39, 0.78, 1.18, 1.57, 1.96], // Q11
+  [0.41, 0.82, 1.23, 1.64, 2.05], // Q12
+  [0.41, 0.82, 1.23, 1.64, 2.05], // Q13
+  [0.39, 0.78, 1.18, 1.57, 1.96], // Q14
+  [0.37, 0.75, 1.12, 1.5, 1.87], // Q15
+  [0.41, 0.82, 1.23, 1.64, 2.05], // Q16
+
+  // OPERATIONAL READINESS (Q17 - Q32)
+  [0.34, 0.68, 1.01, 1.35, 1.69], // Q17
+  [0.32, 0.64, 0.97, 1.29, 1.61], // Q18
+  [0.34, 0.68, 1.01, 1.35, 1.69], // Q19
+  [0.34, 0.68, 1.01, 1.35, 1.69], // Q20
+  [0.32, 0.64, 0.97, 1.29, 1.61], // Q21
+  [0.32, 0.64, 0.97, 1.29, 1.61], // Q22
+  [0.34, 0.68, 1.01, 1.35, 1.69], // Q23
+  [0.32, 0.64, 0.97, 1.29, 1.61], // Q24
+  [0.34, 0.68, 1.01, 1.35, 1.69], // Q25
+  [0.32, 0.64, 0.97, 1.29, 1.61], // Q26
+  [0.32, 0.64, 0.97, 1.29, 1.61], // Q27
+  [0.32, 0.64, 0.97, 1.29, 1.61], // Q28
+  [0.32, 0.64, 0.97, 1.29, 1.61], // Q29
+  [0.32, 0.64, 0.97, 1.29, 1.61], // Q30
+  [0.32, 0.64, 0.97, 1.29, 1.61], // Q31
+  [0.32, 0.64, 0.97, 1.29, 1.61], // Q32
+
+  // FINANCIAL READINESS (Q33 - Q45)
+  [0.37, 0.74, 1.11, 1.48, 1.85], // Q33
+  [0.37, 0.74, 1.11, 1.48, 1.85], // Q34
+  [0.37, 0.74, 1.11, 1.48, 1.85], // Q35
+  [0.37, 0.74, 1.11, 1.48, 1.85], // Q36
+  [0.37, 0.74, 1.11, 1.48, 1.85], // Q37
+  [0.37, 0.74, 1.11, 1.48, 1.85], // Q38
+  [0.37, 0.74, 1.11, 1.48, 1.85], // Q39
+  [0.37, 0.74, 1.11, 1.48, 1.85], // Q40
+  [0.37, 0.74, 1.11, 1.48, 1.85], // Q41
+  [0.37, 0.74, 1.11, 1.48, 1.85], // Q42
+  [0.37, 0.74, 1.11, 1.48, 1.85], // Q43
+  [0.37, 0.74, 1.11, 1.48, 1.85], // Q44
+  [0.37, 0.74, 1.11, 1.48, 1.85], // Q45
+
+  // POLICY & REGULATORY READINESS (Q46 - Q58)
+  [0.28, 0.55, 0.83, 1.1, 1.38], // Q46
+  [0.28, 0.55, 0.83, 1.1, 1.38], // Q47
+  [0.28, 0.55, 0.83, 1.1, 1.38], // Q48
+  [0.28, 0.55, 0.83, 1.1, 1.38], // Q49
+  [0.28, 0.55, 0.83, 1.1, 1.38], // Q50
+  [0.28, 0.55, 0.83, 1.1, 1.38], // Q51
+  [0.28, 0.55, 0.83, 1.1, 1.38], // Q52
+  [0.28, 0.55, 0.83, 1.1, 1.38], // Q53
+  [0.28, 0.55, 0.83, 1.1, 1.38], // Q54
+  [0.28, 0.55, 0.83, 1.1, 1.38], // Q55
+  [0.28, 0.55, 0.83, 1.1, 1.38], // Q56
+  [0.28, 0.55, 0.83, 1.1, 1.38], // Q57
+  [0.28, 0.55, 0.83, 1.1, 1.38], // Q58
+];
+
 // --- DYNAMIC GAUGE / PIE CHART COMPONENT ---
 const ScoreGauge = ({ score }) => {
   const radius = 36;
@@ -162,6 +232,7 @@ function App() {
     let pillarsMap = new Map();
     let currentPillarName = "";
     let currentCategoryName = "";
+    let questionSequenceIndex = 0; // Tracks consecutive valid questions
 
     rows.forEach((row, i) => {
       if (i === 0 || row.length < 8) return;
@@ -176,6 +247,8 @@ function App() {
         currentCategoryName = cCell
           .replace(/[\=\(]?\s*full marks.*/i, "")
           .trim();
+
+      // If there is no question in this row, skip it
       if (!qCell) return;
 
       let questionText = qCell.split("marks")[0].trim();
@@ -197,29 +270,28 @@ function App() {
 
       let cObj = pObj.categories.get(currentCategoryName);
       let options = [];
-      let baseMark = 0;
+
+      // Fetch the strict scores based on the sequential question index
+      let targetScores = SCORING_MATRIX[questionSequenceIndex] || [
+        0, 0, 0, 0, 0,
+      ];
 
       for (let j = 3; j <= 7; j++) {
         let optStr = row[j] ? row[j].trim() : "";
         if (!optStr) continue;
 
-        let markMatch = optStr.match(/marks?\s*=\s*([0-9.]+)/i);
-        let score = 0;
-        if (markMatch) {
-          score = parseFloat(markMatch[1]);
-          if (j === 3) baseMark = score;
-        } else {
-          score = baseMark * (j - 2);
-        }
+        // Use the strict matrix value rather than regex text scraping
+        let score = targetScores[j - 3];
 
         let cleanText = optStr
           .replace(/\.?\s*\(marks?\s*=\s*[0-9.]+\)/i, "")
           .replace(/^"|"$/g, "")
           .trim();
+
         options.push({
           level: j - 2,
           text: cleanText,
-          score: Number(score.toFixed(4)),
+          score: score,
         });
       }
 
@@ -228,6 +300,9 @@ function App() {
         text: questionText,
         options: options,
       });
+
+      // Increment sequence index so the next question pulls the next set of marks
+      questionSequenceIndex++;
     });
 
     return Array.from(pillarsMap.values()).map((p) => ({
@@ -263,7 +338,7 @@ function App() {
         max += highestOpt;
       });
     });
-    return Math.round(max);
+    return Number(max.toFixed(2));
   };
 
   const calculatePillarScore = (pillar) => {
@@ -440,7 +515,7 @@ function App() {
               {data.map((p, idx) => {
                 const pScore = calculatePillarScore(p);
                 const pMax = calculatePillarMax(p);
-                const pPercent = (pScore / pMax) * 100;
+                const pPercent = pMax === 0 ? 0 : (pScore / pMax) * 100;
                 return (
                   <div
                     key={idx}
@@ -449,7 +524,7 @@ function App() {
                     <div className="flex justify-between items-center mb-3">
                       <span className="font-bold text-gray-800">{p.name}</span>
                       <span className="font-black text-blue-600">
-                        {pScore.toFixed(2)} / {pMax}
+                        {pScore.toFixed(2)} / {pMax.toFixed(2)}
                       </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2.5">
@@ -602,7 +677,7 @@ function App() {
 
         <div className="flex space-x-3 mb-8 overflow-x-auto pb-2">
           {data.map((p, idx) => {
-            const maxScore = calculatePillarMax(p);
+            // const maxScore = calculatePillarMax(p);
             return (
               <button
                 key={idx}
@@ -610,11 +685,11 @@ function App() {
                 className={`px-5 py-3.5 whitespace-nowrap rounded-xl font-bold transition-all duration-200 ${currentPillarIdx === idx ? "bg-blue-600 text-white shadow-md shadow-blue-200" : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"}`}
               >
                 {p.name}
-                <span
+                {/* <span
                   className={`ml-3 px-2.5 py-1 rounded-md text-sm ${currentPillarIdx === idx ? "bg-white/20 text-white" : "bg-gray-100 text-gray-700 font-semibold"}`}
                 >
-                  {calculatePillarScore(p).toFixed(2)} / {maxScore}
-                </span>
+                  {calculatePillarScore(p).toFixed(2)} / {maxScore.toFixed(2)}
+                </span> */}
               </button>
             );
           })}
@@ -625,13 +700,13 @@ function App() {
             <h3 className="text-3xl font-bold text-gray-800">
               {currentPillar.name}
             </h3>
-            <span className="text-gray-500 font-bold bg-gray-50 px-4 py-2 rounded-lg border border-gray-200">
+            {/* <span className="text-gray-500 font-bold bg-gray-50 px-4 py-2 rounded-lg border border-gray-200">
               Pillar Score:{" "}
               <span className="text-blue-600">
                 {calculatePillarScore(currentPillar).toFixed(2)}
               </span>{" "}
-              / {calculatePillarMax(currentPillar)}
-            </span>
+              / {calculatePillarMax(currentPillar).toFixed(2)}
+            </span> */}
           </div>
 
           {currentPillar.categories.map((category, catIdx) => (
